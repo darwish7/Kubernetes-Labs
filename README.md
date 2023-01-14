@@ -119,7 +119,7 @@ new-replica-set-pdnj6   0/1     ImagePullBackOff    0          37m
 new-replica-set-wj7jm   0/1     ContainerCreating   0          3s
 ```
 ## 7-Why are there still 4 PODs, even after you deleted one?
-### because the desired in the replica sit is 4 
+### because the desired in the replica set is 4 
 ## 8-Create a ReplicaSet using the below yaml
 ```
 apiVersion: v1 ---> apps/v1
