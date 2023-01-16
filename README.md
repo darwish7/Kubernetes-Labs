@@ -128,3 +128,127 @@ replicaset-1-7rzvm      1/1     Running            0          12s
 replicaset-1-zwdzs      1/1     Running            0          12s
 
 ```
+# day 3 lab
+## Create basic resources 
+---
+#### Create the specified Namespace
+```bash
+k create namespace lab3 
+```
+#### Create a deployment nginx with 3 replicas
+1.  we create lab3-deployment.yaml with the following
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  creationTimestamp: null
+  labels:
+  name: lab3
+  namespace: lab3
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      name: lab3
+  strategy: {}
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        name: lab3
+    spec:
+      containers:
+      - image: nginx:alpine
+        name: nginx
+        ports:
+        - containerPort: 80
+        resources: {}
+```
+2. then we apply the yaml file
+```bash
+k apply -f lab3-deployment.yaml 
+k get pod --namespace=lab3 
+NAME                    READY   STATUS    RESTARTS   AGE
+lab3-76dc9cbb46-n2sf5   1/1     Running   0          61s
+lab3-76dc9cbb46-p75zl   1/1     Running   0          61s
+lab3-76dc9cbb46-wgkbf   1/1     Running   0          61s
+```
+#### Expose the deployment on port 80
+```bash
+k expose deployment lab3 --type=NodePort --name=my-service --namespace=lab3 
+k get service -n lab3 
+NAME         TYPE       CLUSTER-IP     EXTERNAL-IP   PORT(S)        AGE
+my-service   NodePort   10.98.66.134   <none>        80:30007/TCP   14s
+```
+---
+## Create a CronJob for listing the EndPoints
+---
+#### Create a **serviceaccount** cronjob-sa
+```bash
+k create serviceaccount cronjob-sa --namespace=lab3
+```
+#### Create a Role that allows listing all the services and endpoints
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  creationTimestamp: null
+  name: cronjob-role
+  namespace: lab3
+rules:
+- apiGroups:
+  - ""
+  resources: ["services", "endpoints"]
+  verbs: ["get", "watch", "list"]
+```
+#### Link the Role with the created SA 
+```bash
+kubectl create rolebinding cronjobe-sa-role --role=cronjob-role --serviceaccount=lab3:cronjob-sa --namespace=lab3
+```
+#### Create a CronJob that lists the endpoints in that namespace every minute and paste the output for the first pod created
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: list-endpoint
+  namespace: lab3
+spec:
+  schedule: "* * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: cronjob-sa
+          containers:
+          - name: cronjob-list
+            image: bitnami/kubectl:latest
+            resources: {}
+            command:
+            - kubectl
+            - get
+            - endpoints
+          restartPolicy: OnFailure
+```
+##### **logs of the first pod created by the cronjob**
+```bash
+k logs pods/list-endpoint-27897426-5r7m7 --namespace=lab3
+
+NAME         ENDPOINTS                                AGE
+my-service   10.44.0.3:80,10.44.0.4:80,10.44.0.5:80   99s
+```
+#### After listing try to delete the 3 nginx pods ? again try to view the logs for the newly created pod for that cronJob what do you think happened ? 
+- after deleting 3 nginx pods, the deployment created 3 new pods 
+- it still has the same **ENDPOINT**
+- which means that the pods get the same ip addresses
+```bash
+k logs pods/list-endpoint-27897429-8ttsl --namespace=lab3
+
+NAME         ENDPOINTS                                AGE
+my-service   10.44.0.3:80,10.44.0.4:80,10.44.0.5:80   4m38s
+```
+- but if we delete the deployment the **ENDPOINT** will be empty
+```
+NAME         ENDPOINTS   AGE
+my-service   <none>      16m
+```
