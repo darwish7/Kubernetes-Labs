@@ -240,7 +240,7 @@ my-service   10.44.0.3:80,10.44.0.4:80,10.44.0.5:80   99s
 #### After listing try to delete the 3 nginx pods ? again try to view the logs for the newly created pod for that cronJob what do you think happened ? 
 - after deleting 3 nginx pods, the deployment created 3 new pods 
 - it still has the same **ENDPOINT**
-- which means that the pods get the same ip addresses
+- which means that the pods got the same ip addresses
 ```bash
 k logs pods/list-endpoint-27897429-8ttsl --namespace=lab3
 
